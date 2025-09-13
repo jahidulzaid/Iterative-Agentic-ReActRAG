@@ -332,7 +332,7 @@ class ReActRAG:
 
 
 # Example instantiation
-agent = ReviewAgent(
+agent = ReActRAG(
     llm_engine=llm_engine,
     max_iterations=5,
 )
