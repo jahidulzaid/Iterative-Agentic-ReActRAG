@@ -296,23 +296,54 @@ class ReActRAG:
                 if matches:
                     extracted_data[key] = matches[0].strip()
 
-            # Logging
+            # Logging all extracted fields
             if "thought" in extracted_data:
                 logger.log(35, "=== Agent Thought ===")
                 logger.log(31, extracted_data["thought"])
-            if "response" in extracted_data:
-                logger.log(36, "=== Agent Response ===")
-                logger.log(31, extracted_data["response"])
-            if "context" in extracted_data:
-                logger.log(32, "=== Context ===")
-                logger.log(31, extracted_data["context"])
+
+            if "id" in extracted_data:
+                logger.log(32, "=== ID ===")
+                logger.log(31, extracted_data["id"])
+
             if "question" in extracted_data:
                 logger.log(32, "=== Question ===")
                 logger.log(31, extracted_data["question"])
 
             if "answer" in extracted_data:
-                logger.log(33, "Final Answer:")
+                logger.log(33, "=== Answer ===")
                 logger.log(32, extracted_data["answer"])
+
+            if "context" in extracted_data:
+                logger.log(32, "=== Context ===")
+                logger.log(31, extracted_data["context"])
+
+            if "response" in extracted_data:
+                logger.log(36, "=== Agent Response ===")
+                logger.log(31, extracted_data["response"])
+
+            if "response_length" in extracted_data:
+                logger.log(32, "=== Response Length ===")
+                logger.log(31, extracted_data["response_length"])
+
+            if "Faithfulness" in extracted_data:
+                logger.log(32, "=== Faithfulness ===")
+                logger.log(31, extracted_data["Faithfulness"])
+
+            if "Completeness" in extracted_data:
+                logger.log(32, "=== Completeness ===")
+                logger.log(31, extracted_data["Completeness"])
+
+            if "Answer_Relevance" in extracted_data:
+                logger.log(32, "=== Answer Relevance ===")
+                logger.log(31, extracted_data["Answer_Relevance"])
+
+            if "Context_Relevance" in extracted_data:
+                logger.log(32, "=== Context Relevance ===")
+                logger.log(31, extracted_data["Context_Relevance"])
+
+            if "Context_Recall" in extracted_data:
+                logger.log(32, "=== Context Recall ===")
+                logger.log(31, extracted_data["Context_Recall"])
                 break
 
             if not extracted_data:
