@@ -300,6 +300,15 @@ class ReActRAG:
             if "thought" in extracted_data:
                 logger.log(35, "=== Agent Thought ===")
                 logger.log(31, extracted_data["thought"])
+            if "response" in extracted_data:
+                logger.log(36, "=== Agent Response ===")
+                logger.log(31, extracted_data["response"])
+            if "context" in extracted_data:
+                logger.log(32, "=== Context ===")
+                logger.log(31, extracted_data["context"])
+            if "question" in extracted_data:
+                logger.log(32, "=== Question ===")
+                logger.log(31, extracted_data["question"])
 
             if "answer" in extracted_data:
                 logger.log(33, "Final Answer:")
@@ -455,17 +464,60 @@ for i, sample in tqdm(enumerate(data), total=len(data)):
         # Run agent with retry logic
         response = safe_run(agent, user_prompt, retries=25)
 
-        results.append({
-            "id": i,
-            "response": str(response)
-        })
+        if response is not None:
+            results.append({
+                "id": response.get("id", i),  # fallback to loop index if missing
+                "question": response.get("question", ""),
+                "answer": response.get("answer", ""),
+                "context": response.get("context", ""),
+                "response": response.get("response", ""),
+                "response_length": response.get("response_length", ""),
+                "Faithfulness": response.get("Faithfulness", ""),
+                "Completeness": response.get("Completeness", ""),
+                "Answer_Relevance": response.get("Answer_Relevance", ""),
+                "Context_Relevance": response.get("Context_Relevance", ""),
+                "Context_Recall": response.get("Context_Recall", "")
+            })
+        else:
+            logger.error(f"Agent returned None for sample {i}")
+            results.append({
+                "id": i,
+                "question": "",
+                "answer": "",
+                "context": "",
+                "response": "",
+                "response_length": "",
+                "Faithfulness": "",
+                "Completeness": "",
+                "Answer_Relevance": "",
+                "Context_Relevance": "",
+                "Context_Recall": ""
+            })
 
     except Exception as e:
         logger.error(f"Failed to process sample {i}: {e}")
         results.append({
             "id": i,
-            "response": ""
+            "question": "",
+            "answer": "",
+            "context": "",
+            "response": "",
+            "response_length": "",
+            "Faithfulness": "",
+            "Completeness": "",
+            "Answer_Relevance": "",
+            "Context_Relevance": "",
+            "Context_Recall": ""
         })
+
+#csv output
+import pandas as pd
+
+df = pd.DataFrame(results)
+df.to_csv("submission.csv", index=False, encoding="utf-8")
+
+print(f"Wrote submission.csv with {len(results)} rows (id, response).")
+
 
 
 
@@ -476,13 +528,7 @@ for i, sample in tqdm(enumerate(data), total=len(data)):
 
 # print(f"Wrote submission.json with {len(results)} rows (id, response).")
 
-#csv output
-import pandas as pd
 
-df = pd.DataFrame(results)
-df.to_csv("submission.csv", index=False, encoding="utf-8")
-
-print(f"Wrote submission.csv with {len(results)} rows (id, response).")
 
 
 
