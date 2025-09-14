@@ -478,7 +478,7 @@ def convert_triviaqa_sample_to_text(sample, include_context=True, max_context_le
 def safe_run(agent, task, retries=25):
     for attempt in range(retries):
         response = agent.run(task)
-        if isinstance(response, str) and response.strip():
+        if isinstance(response, dict) and response.get("answer", "").strip():
             return response
         logger.warning(f"Empty response on attempt {attempt+1}, retrying...")
     return ""  # fallback after retries
