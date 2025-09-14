@@ -18,20 +18,26 @@ import torch
 import pandas as pd
 from tqdm.auto import tqdm
 from transformers import set_seed
-import fitz
+from collections import Counter
+import torch
+import pandas as pd
+from tqdm.auto import tqdm
+from transformers import set_seed
+import json, os
+import logging
 
 
 # for text_Extract
 import os
-import fitz  # PyMuPDF
 from pdf2image import convert_from_path
 from PIL import Image
 import pandas as pd
 
 
-
-# for token counting
+# for token and resource counting
 import tiktoken
+import time
+import psutil
 
 
 
@@ -47,19 +53,6 @@ llm = LLM(
 )
 
 tokenizer = llm.get_tokenizer()
-
-import re
-from collections import Counter
-import vllm
-import torch
-import pandas as pd
-from tqdm.auto import tqdm
-from transformers import set_seed
-import fitz # PyMuPDF
-import json, os, re, zipfile
-import logging
-import ast
-import signal
 
 
 class CustomFormatter(logging.Formatter):
@@ -235,11 +228,7 @@ For each question-answer-context instance, follow this workflow and output using
    - Wrap in `<Context_Recall>` tags.  
    - Assess how well the system recalled the context in its reasoning: between (0 to 1).  
    Example: <Context_Recall>1</Context_Recall>
-12. **Exact Match**
-   - Wrap in `<Exact_Match>` tags.
-   - 1 if the predicted answer exactly matches the ground truth answer (case + whitespace normalized), else 0.
-   Example: <Exact_Match>1</Exact_Match>
-
+   
 """
 
 

@@ -639,21 +639,12 @@ df.to_csv("ReActRAG_v2_DeepSeek-V2-lite.csv", index=False, encoding="utf-8")
 print(f"Wrote ReActRAG_v2_DeepSeek-V2-lite.csv with {len(results)} rows (id, response).")
 
 
-
-
 #json output
 
 # with open("submission.json", "w", encoding="utf-8") as f:
 #     json.dump(results, f, ensure_ascii=False, indent=2)
 
 # print(f"Wrote submission.json with {len(results)} rows (id, response).")
-
-
-
-
-
-
-
 
 #token counting
 # encoding = tiktoken.get_encoding("gpt2")
