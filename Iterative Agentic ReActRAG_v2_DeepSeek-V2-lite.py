@@ -548,8 +548,31 @@ for i, sample in tqdm(enumerate(data), total=len(data)):
         # Run agent with retry logic
         response = safe_run(agent, user_prompt, retries=25)
         response_str = str(response)
-        def compute_exact_match(predicted: str, gold: str) -> int:
-            return int(predicted.strip().lower() == gold.strip().lower())
+        
+        # Compute Exact Match
+        import re, unicodedata, string
+
+        def _normalize(s):
+            if s is None:
+                return ""
+            s = unicodedata.normalize("NFKC", str(s))
+            s = s.lower()
+            s = re.sub(r'\s+', ' ', s).strip()
+            # remove punctuation
+            s = s.translate(str.maketrans('', '', string.punctuation))
+            # remove common English articles (optional)
+            s = re.sub(r'\b(a|an|the)\b', '', s).strip()
+            return s
+
+        def compute_exact_match(predicted, gold):
+            """
+            gold may be a single string or an iterable of acceptable gold strings.
+            Returns 1 for exact match after normalization, else 0.
+            """
+            pred_norm = _normalize(predicted)
+            if isinstance(gold, (list, tuple, set)):
+                return int(any(pred_norm == _normalize(g) for g in gold))
+            return int(pred_norm == _normalize(gold))
 
 
         # Example: extracting model's answer (customize based on actual output format)
