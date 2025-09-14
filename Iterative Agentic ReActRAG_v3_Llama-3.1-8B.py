@@ -40,16 +40,16 @@ import time
 import psutil
 
 
+
 model_id = "meta-llama/Llama-3.1-8B"
 
-
-llm = vllm.LLM(
+llm = LLM(
     model=model_id,
-    # quantization="awq",
-    max_model_len=16384,
+    trust_remote_code=True,
+    max_model_len=32768,   # try 16k; should be safer than putting full 32‑128k
     enable_prefix_caching=True,
-    tensor_parallel_size=torch.cuda.device_count(),
-    dtype="float16",
+    tensor_parallel_size=torch.cuda.device_count(),  # likely =1
+    dtype="float16",   # vLLM may still need a higher precision dtype for non‑quantized parts
 )
 
 tokenizer = llm.get_tokenizer()
@@ -650,7 +650,6 @@ for i, sample in tqdm(enumerate(data), total=len(data)):
 
 #csv output
 import pandas as pd
-
 df = pd.DataFrame(results)
 df.to_csv("ReActRAG_v3_Lllama3.1-8B.csv", index=False, encoding="utf-8")
 
