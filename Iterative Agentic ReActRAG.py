@@ -253,7 +253,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 class ReActRAG:
-    def __init__(self, llm_engine, max_iterations=3):
+    def __init__(self, llm_engine, max_iterations=1):
         self.llm_engine = llm_engine
         self.max_iterations = max_iterations
 
@@ -374,7 +374,7 @@ class ReActRAG:
 # Example instantiation
 agent = ReActRAG(
     llm_engine=llm_engine,
-    max_iterations=5,
+    max_iterations=1,
 )
 
 
