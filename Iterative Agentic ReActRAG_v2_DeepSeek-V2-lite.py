@@ -13,6 +13,7 @@
 import re
 from collections import Counter
 import vllm
+from vllm import LLM
 import torch
 import pandas as pd
 from tqdm.auto import tqdm
