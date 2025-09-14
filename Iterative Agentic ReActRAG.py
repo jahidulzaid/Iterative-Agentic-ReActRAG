@@ -423,30 +423,57 @@ logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
 def convert_triviaqa_sample_to_text(sample, include_context=True, max_context_len=5000):
-    """Convert a single sample from JSONL into a QA text format."""
+    """Convert a single TriviaQA JSON sample into a readable text format including all keys."""
+
+    def flatten_dict(d, parent_key=''):
+        """Recursively flattens a nested dictionary."""
+        items = []
+        for k, v in d.items():
+            full_key = f"{parent_key}.{k}" if parent_key else k
+            if isinstance(v, dict):
+                items.extend(flatten_dict(v, full_key))
+            elif isinstance(v, list):
+                if v:
+                    for i, item in enumerate(v):
+                        if isinstance(item, dict):
+                            items.extend(flatten_dict(item, f"{full_key}[{i}]"))
+                        else:
+                            items.append((f"{full_key}[{i}]", item))
+                else:
+                    items.append((full_key, "[]"))
+            else:
+                items.append((full_key, v if v != "" else '""'))
+        return items
+
+    # Flatten the full sample to get all keys and values
+    flat_items = flatten_dict(sample)
+
+    # Extract question and answer separately for easier access
     question = sample.get("question", "").strip()
     answer = sample.get("answer", {}).get("value", "N/A")
 
-    # Extract context
+    # Optional: extract + truncate context (same logic as before)
     context = ""
     if include_context:
         descriptions = sample.get("search_results", {}).get("description", [])
         search_contexts = sample.get("search_results", {}).get("search_context", [])
-        
+
         context_blocks = descriptions + search_contexts
         context = "\n".join(context_blocks).strip()
 
-        # Optional: truncate context if too long
         if max_context_len and len(context) > max_context_len:
             context = context[:max_context_len].rsplit("\n", 1)[0] + "\n[...]"
 
-    # Format output
-    if context:
-        extracted_text = f"Context:\n{context}\n\nQ: {question}\nA: {answer}"
-    else:
-        extracted_text = f"Q: {question}\nA: {answer}"
+    # Build full extracted text with all key-value pairs
+    all_fields_text = "\n".join([f"{k}: {v}" for k, v in flat_items])
 
-    return extracted_text, question
+    if context:
+        final_text = f"{all_fields_text}\n\n---\nContext:\n{context}\n\nQ: {question}\nA: {answer}"
+    else:
+        final_text = f"{all_fields_text}\n\n---\nQ: {question}\nA: {answer}"
+
+    return final_text, question
+
 
 def safe_run(agent, task, retries=25):
     for attempt in range(retries):
