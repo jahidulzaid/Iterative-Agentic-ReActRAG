@@ -25,7 +25,6 @@ import fitz
 import os
 import fitz  # PyMuPDF
 from pdf2image import convert_from_path
-import pytesseract
 from PIL import Image
 import pandas as pd
 
@@ -497,6 +496,7 @@ def safe_run(agent, task, retries=25):
 
 # === MAIN SCRIPT ===
 import re
+import time
 
 def extract_field(response_text, field_name):
     """
@@ -519,6 +519,10 @@ for i, sample in tqdm(enumerate(data), total=len(data)):
         # Convert sample to prompt text
         extracted_text, question = convert_triviaqa_sample_to_text(sample)
         encoding = tiktoken.get_encoding("gpt2")
+        
+        # Measure latency
+        start_time = time.time()
+        
 
         # Extract gold answer from sample for exact match computation
         answer = sample.get("answer", {}).get("value", "N/A")
@@ -548,6 +552,9 @@ for i, sample in tqdm(enumerate(data), total=len(data)):
         # Run agent with retry logic
         response = safe_run(agent, user_prompt, retries=25)
         response_str = str(response)
+
+            # Measure latency
+        latency = time.time() - start_time
         
         # Compute Exact Match
         import re, unicodedata, string
@@ -595,7 +602,9 @@ for i, sample in tqdm(enumerate(data), total=len(data)):
                 "Answer_Relevance": response.get("Answer_Relevance", ""),
                 "Context_Relevance": response.get("Context_Relevance", ""),
                 "Context_Recall": response.get("Context_Recall", ""),
-                "exact_match": exact_match
+                "exact_match": exact_match,
+                "tokens": tokens,
+                "latency": latency
             })
         else:
             logger.error(f"Agent returned None for sample {i}")
@@ -611,8 +620,11 @@ for i, sample in tqdm(enumerate(data), total=len(data)):
                 "Answer_Relevance": "",
                 "Context_Relevance": "",
                 "Context_Recall": "",
-                "exact_match": exact_match
+                "exact_match": exact_match,
+                "tokens": tokens,
+                "latency": latency
             })
+
     except Exception as e:
         logger.error(f"Failed to process sample {i}: {e}")
         results.append({
@@ -627,7 +639,9 @@ for i, sample in tqdm(enumerate(data), total=len(data)):
             "Answer_Relevance": "",
             "Context_Relevance": "",
             "Context_Recall": "",
-            "exact_match": exact_match
+            "exact_match": exact_match,
+            "tokens": tokens,
+            "latency": latency
         })
 
 #csv output
@@ -636,8 +650,7 @@ import pandas as pd
 df = pd.DataFrame(results)
 df.to_csv("ReActRAG_v3_Llama-3.1-8B.csv", index=False, encoding="utf-8")
 
-print(f"Wrote ReActRAG_v2_DeepSeek-V2-lite.csv with {len(results)} rows (id, response).")
-
+print(f"Wrote ReActRAG_v3_Llama-3.1-8B.csv with {len(results)} rows")
 
 
 

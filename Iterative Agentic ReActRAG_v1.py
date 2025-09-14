@@ -1,4 +1,4 @@
-
+# 
 # # Core dependencies (usually pre-installed in Colab, but ensure updated)
 # !pip install --upgrade transformers pandas tqdm torch
 
@@ -13,6 +13,7 @@
 import re
 from collections import Counter
 import vllm
+from vllm import LLM
 import torch
 import pandas as pd
 from tqdm.auto import tqdm
@@ -24,7 +25,6 @@ import fitz
 import os
 import fitz  # PyMuPDF
 from pdf2image import convert_from_path
-import pytesseract
 from PIL import Image
 import pandas as pd
 
@@ -35,14 +35,15 @@ import tiktoken
 
 
 
-model = "Qwen/Qwen3-8B"
+model_id = "Qwen/Qwen3-8B"
 
-llm = vllm.LLM(
-    model,
-    # quantization="awq",
-    max_model_len=32768,
+llm = LLM(
+    model=model_id,
+    trust_remote_code=True,
+    max_model_len=16384,   # try 16k; should be safer than putting full 32‑128k
     enable_prefix_caching=True,
-    tensor_parallel_size=torch.cuda.device_count(),
+    tensor_parallel_size=torch.cuda.device_count(),  # likely =1
+    dtype="float16",   # vLLM may still need a higher precision dtype for non‑quantized parts
 )
 
 tokenizer = llm.get_tokenizer()
@@ -234,6 +235,10 @@ For each question-answer-context instance, follow this workflow and output using
    - Wrap in `<Context_Recall>` tags.  
    - Assess how well the system recalled the context in its reasoning: between (0 to 1).  
    Example: <Context_Recall>1</Context_Recall>
+12. **Exact Match**
+   - Wrap in `<Exact_Match>` tags.
+   - 1 if the predicted answer exactly matches the ground truth answer (case + whitespace normalized), else 0.
+   Example: <Exact_Match>1</Exact_Match>
 
 """
 
@@ -271,6 +276,8 @@ class ReActRAG:
             "Answer_Relevance": re.compile(r"<Answer_Relevance>(.*?)</Answer_Relevance>", re.DOTALL),
             "Context_Relevance": re.compile(r"<Context_Relevance>(.*?)</Context_Relevance>", re.DOTALL),
             "Context_Recall": re.compile(r"<Context_Recall>(.*?)</Context_Recall>", re.DOTALL),
+            "Exact_Match": re.compile(r"<Exact_Match>(.*?)</Exact_Match>", re.DOTALL),
+
         }
 
     def run(self, task: str):
@@ -340,6 +347,9 @@ class ReActRAG:
             if "Context_Relevance" in extracted_data:
                 logger.log(32, "=== Context Relevance ===")
                 logger.log(31, extracted_data["Context_Relevance"])
+            if "Exact_Match" in extracted_data:
+                logger.log(32, "=== Exact Match ===")
+                logger.log(31, extracted_data["Exact_Match"])
 
             if "Context_Recall" in extracted_data:
                 logger.log(32, "=== Context Recall ===")
@@ -368,6 +378,7 @@ class ReActRAG:
             "Answer_Relevance": extracted_data.get("Answer_Relevance"),
             "Context_Relevance": extracted_data.get("Context_Relevance"),
             "Context_Recall": extracted_data.get("Context_Recall"),
+            "Exact_Match": extracted_data.get("Exact_Match"),
         }
 
 
@@ -484,6 +495,17 @@ def safe_run(agent, task, retries=25):
     return ""  # fallback after retries
 
 # === MAIN SCRIPT ===
+import re
+import time
+
+def extract_field(response_text, field_name):
+    """
+    Naive field extractor based on line starting with `field_name:`
+    """
+    pattern = rf"{field_name}\s*[:\-]\s*(.*)"
+    match = re.search(pattern, response_text, re.IGNORECASE)
+    return match.group(1).strip() if match else ""
+
 
 # Load JSONL properly (not using pandas.read_csv for JSONL)
 jsonl_path = "dataset/triviaQA.jsonl"
@@ -496,6 +518,14 @@ for i, sample in tqdm(enumerate(data), total=len(data)):
     try:
         # Convert sample to prompt text
         extracted_text, question = convert_triviaqa_sample_to_text(sample)
+        encoding = tiktoken.get_encoding("gpt2")
+        
+        # Measure latency
+        start_time = time.time()
+        
+
+        # Extract gold answer from sample for exact match computation
+        answer = sample.get("answer", {}).get("value", "N/A")
 
         # Create prompt
         user_prompt = f"""
@@ -521,6 +551,43 @@ for i, sample in tqdm(enumerate(data), total=len(data)):
 
         # Run agent with retry logic
         response = safe_run(agent, user_prompt, retries=25)
+        response_str = str(response)
+
+            # Measure latency
+        latency = time.time() - start_time
+        
+        # Compute Exact Match
+        import re, unicodedata, string
+
+        def _normalize(s):
+            if s is None:
+                return ""
+            s = unicodedata.normalize("NFKC", str(s))
+            s = s.lower()
+            s = re.sub(r'\s+', ' ', s).strip()
+            # remove punctuation
+            s = s.translate(str.maketrans('', '', string.punctuation))
+            # remove common English articles (optional)
+            s = re.sub(r'\b(a|an|the)\b', '', s).strip()
+            return s
+
+        def compute_exact_match(predicted, gold):
+            """
+            gold may be a single string or an iterable of acceptable gold strings.
+            Returns 1 for exact match after normalization, else 0.
+            """
+            pred_norm = _normalize(predicted)
+            if isinstance(gold, (list, tuple, set)):
+                return int(any(pred_norm == _normalize(g) for g in gold))
+            return int(pred_norm == _normalize(gold))
+
+
+        # Example: extracting model's answer (customize based on actual output format)
+        model_answer = extract_field(response_str, "answer")  # <-- You must define this helper
+        exact_match = compute_exact_match(model_answer, answer)
+
+        tokens = encoding.encode(user_prompt)
+
 
         if response is not None:
             results.append({
@@ -534,7 +601,10 @@ for i, sample in tqdm(enumerate(data), total=len(data)):
                 "Completeness": response.get("Completeness", ""),
                 "Answer_Relevance": response.get("Answer_Relevance", ""),
                 "Context_Relevance": response.get("Context_Relevance", ""),
-                "Context_Recall": response.get("Context_Recall", "")
+                "Context_Recall": response.get("Context_Recall", ""),
+                "exact_match": exact_match,
+                "tokens": tokens,
+                "latency": latency
             })
         else:
             logger.error(f"Agent returned None for sample {i}")
@@ -549,7 +619,10 @@ for i, sample in tqdm(enumerate(data), total=len(data)):
                 "Completeness": "",
                 "Answer_Relevance": "",
                 "Context_Relevance": "",
-                "Context_Recall": ""
+                "Context_Recall": "",
+                "exact_match": exact_match,
+                "tokens": tokens,
+                "latency": latency
             })
 
     except Exception as e:
@@ -565,17 +638,19 @@ for i, sample in tqdm(enumerate(data), total=len(data)):
             "Completeness": "",
             "Answer_Relevance": "",
             "Context_Relevance": "",
-            "Context_Recall": ""
+            "Context_Recall": "",
+            "exact_match": exact_match,
+            "tokens": tokens,
+            "latency": latency
         })
 
 #csv output
 import pandas as pd
 
 df = pd.DataFrame(results)
-df.to_csv("submission.csv", index=False, encoding="utf-8")
+df.to_csv("ReActRAG_v1_Qwen3-8B.csv", index=False, encoding="utf-8")
 
-print(f"Wrote submission.csv with {len(results)} rows (id, response).")
-
+print(f"Wrote ReActRAG_v1_Qwen3-8B.csv with {len(results)} rows")
 
 
 
