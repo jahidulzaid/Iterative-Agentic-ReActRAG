@@ -541,13 +541,15 @@ for i, sample in tqdm(enumerate(data), total=len(data)):
 
         """.strip()
 
-        generated_tokens = encoding.encode(user_prompt)
+        # generated_tokens = encoding.encode(user_prompt)
+        generated_tokens = len(encoding.encode(user_prompt))
+        
 
         # Run agent with retry logic
         response = safe_run(agent, user_prompt, retries=25)
         response_str = str(response)
 
-        response_tokens = encoding.encode(response_str)
+        response_tokens = len(encoding.encode(response_str))
 
             # Measure latency
         latency = time.time() - start_time
