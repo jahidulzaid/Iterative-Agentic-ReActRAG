@@ -235,6 +235,10 @@ For each question-answer-context instance, follow this workflow and output using
    - Wrap in `<Context_Recall>` tags.  
    - Assess how well the system recalled the context in its reasoning: between (0 to 1).  
    Example: <Context_Recall>1</Context_Recall>
+12. **Exact Match**
+   - Wrap in `<Exact_Match>` tags.
+   - 1 if the predicted answer exactly matches the ground truth answer (case + whitespace normalized), else 0.
+   Example: <Exact_Match>1</Exact_Match>
 
 """
 
@@ -272,6 +276,8 @@ class ReActRAG:
             "Answer_Relevance": re.compile(r"<Answer_Relevance>(.*?)</Answer_Relevance>", re.DOTALL),
             "Context_Relevance": re.compile(r"<Context_Relevance>(.*?)</Context_Relevance>", re.DOTALL),
             "Context_Recall": re.compile(r"<Context_Recall>(.*?)</Context_Recall>", re.DOTALL),
+            "Exact_Match": re.compile(r"<Exact_Match>(.*?)</Exact_Match>", re.DOTALL),
+
         }
 
     def run(self, task: str):
@@ -341,6 +347,9 @@ class ReActRAG:
             if "Context_Relevance" in extracted_data:
                 logger.log(32, "=== Context Relevance ===")
                 logger.log(31, extracted_data["Context_Relevance"])
+            if "Exact_Match" in extracted_data:
+                logger.log(32, "=== Exact Match ===")
+                logger.log(31, extracted_data["Exact_Match"])
 
             if "Context_Recall" in extracted_data:
                 logger.log(32, "=== Context Recall ===")
@@ -369,6 +378,7 @@ class ReActRAG:
             "Answer_Relevance": extracted_data.get("Answer_Relevance"),
             "Context_Relevance": extracted_data.get("Context_Relevance"),
             "Context_Recall": extracted_data.get("Context_Recall"),
+            "Exact_Match": extracted_data.get("Exact_Match"),
         }
 
 
@@ -507,6 +517,10 @@ for i, sample in tqdm(enumerate(data), total=len(data)):
     try:
         # Convert sample to prompt text
         extracted_text, question = convert_triviaqa_sample_to_text(sample)
+        encoding = tiktoken.get_encoding("gpt2")
+
+        # Extract gold answer from sample for exact match computation
+        answer = sample.get("answer", {}).get("value", "N/A")
 
         # Create prompt
         user_prompt = f"""
@@ -533,11 +547,16 @@ for i, sample in tqdm(enumerate(data), total=len(data)):
         # Run agent with retry logic
         response = safe_run(agent, user_prompt, retries=25)
         response_str = str(response)
+        def compute_exact_match(predicted: str, gold: str) -> int:
+            return int(predicted.strip().lower() == gold.strip().lower())
+
 
         # Example: extracting model's answer (customize based on actual output format)
         model_answer = extract_field(response_str, "answer")  # <-- You must define this helper
-        exact_match = model_answer.strip().lower() == extracted_answer.strip().lower()
-    
+        exact_match = compute_exact_match(model_answer, answer)
+
+        tokens = encoding.encode(user_prompt)
+
 
         if response is not None:
             results.append({
@@ -570,7 +589,6 @@ for i, sample in tqdm(enumerate(data), total=len(data)):
                 "Context_Recall": "",
                 "exact_match": exact_match
             })
-
     except Exception as e:
         logger.error(f"Failed to process sample {i}: {e}")
         results.append({
