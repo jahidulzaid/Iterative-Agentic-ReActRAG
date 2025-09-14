@@ -634,9 +634,9 @@ for i, sample in tqdm(enumerate(data), total=len(data)):
 import pandas as pd
 
 df = pd.DataFrame(results)
-df.to_csv("submission.csv", index=False, encoding="utf-8")
+df.to_csv("ReActRAG_v2_DeepSeek-V2-lite.csv", index=False, encoding="utf-8")
 
-print(f"Wrote submission.csv with {len(results)} rows (id, response).")
+print(f"Wrote ReActRAG_v2_DeepSeek-V2-lite.csv with {len(results)} rows (id, response).")
 
 
 
