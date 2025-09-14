@@ -46,7 +46,7 @@ model_id = "Qwen/Qwen3-8B"
 llm = LLM(
     model=model_id,
     trust_remote_code=True,
-    max_model_len=16384,   # try 16k; should be safer than putting full 32‑128k
+    max_model_len=32768,   # try 16k; should be safer than putting full 32‑128k
     enable_prefix_caching=True,
     tensor_parallel_size=torch.cuda.device_count(),  # likely =1
     dtype="float16",   # vLLM may still need a higher precision dtype for non‑quantized parts
@@ -228,7 +228,7 @@ For each question-answer-context instance, follow this workflow and output using
    - Wrap in `<Context_Recall>` tags.  
    - Assess how well the system recalled the context in its reasoning: between (0 to 1).  
    Example: <Context_Recall>1</Context_Recall>
-   
+
 """
 
 
