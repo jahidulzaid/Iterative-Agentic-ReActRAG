@@ -497,6 +497,7 @@ def safe_run(agent, task, retries=25):
 # === MAIN SCRIPT ===
 import re
 import time
+import psutil
 
 def extract_field(response_text, field_name):
     """
@@ -522,6 +523,8 @@ for i, sample in tqdm(enumerate(data), total=len(data)):
         
         # Measure latency
         start_time = time.time()
+        process = psutil.Process(os.getpid())
+        start_mem = process.memory_info().rss / (1024 * 1024)  # in MB
         
 
         # Extract gold answer from sample for exact match computation
@@ -549,12 +552,18 @@ for i, sample in tqdm(enumerate(data), total=len(data)):
 
         """.strip()
 
+        generated_tokens = encoding.encode(user_prompt)
+
         # Run agent with retry logic
         response = safe_run(agent, user_prompt, retries=25)
         response_str = str(response)
 
+        response_tokens = encoding.encode(response_str)
+
             # Measure latency
         latency = time.time() - start_time
+        end_mem = process.memory_info().rss / (1024 * 1024)  # in MB
+        resource_used = end_mem - start_mem
         
         # Compute Exact Match
         import re, unicodedata, string
@@ -586,7 +595,7 @@ for i, sample in tqdm(enumerate(data), total=len(data)):
         model_answer = extract_field(response_str, "answer")  # <-- You must define this helper
         exact_match = compute_exact_match(model_answer, answer)
 
-        tokens = encoding.encode(user_prompt)
+        
 
 
         if response is not None:
@@ -603,8 +612,10 @@ for i, sample in tqdm(enumerate(data), total=len(data)):
                 "Context_Relevance": response.get("Context_Relevance", ""),
                 "Context_Recall": response.get("Context_Recall", ""),
                 "exact_match": exact_match,
-                "tokens": tokens,
-                "latency": latency
+                "generated_tokens": generated_tokens,
+                "response_tokens": response_tokens,
+                "latency": latency,
+                "resource_used": resource_used
             })
         else:
             logger.error(f"Agent returned None for sample {i}")
@@ -621,8 +632,10 @@ for i, sample in tqdm(enumerate(data), total=len(data)):
                 "Context_Relevance": "",
                 "Context_Recall": "",
                 "exact_match": exact_match,
-                "tokens": tokens,
-                "latency": latency
+                "generated_tokens": generated_tokens,
+                "response_tokens": response_tokens,
+                "latency": latency,
+                "resource_used": resource_used
             })
 
     except Exception as e:
@@ -640,34 +653,24 @@ for i, sample in tqdm(enumerate(data), total=len(data)):
             "Context_Relevance": "",
             "Context_Recall": "",
             "exact_match": exact_match,
-            "tokens": tokens,
-            "latency": latency
+            "generated_tokens": generated_tokens,
+            "response_tokens": response_tokens,
+            "latency": latency,
+            "resource_used": resource_used
         })
 
 #csv output
 import pandas as pd
 
 df = pd.DataFrame(results)
-df.to_csv("ReActRAG_v3_Llama-3.1-8B.csv", index=False, encoding="utf-8")
+df.to_csv("ReActRAG_v3_Lllama3.1-8B.csv", index=False, encoding="utf-8")
 
-print(f"Wrote ReActRAG_v3_Llama-3.1-8B.csv with {len(results)} rows")
+print(f"Wrote ReActRAG_v3_Lllama3.1-8B.csv with {len(results)} rows.")
 
+# json output
 
+with open("ReActRAG_v3_Lllama3.1-8B.json", "w", encoding="utf-8") as f:
+    json.dump(results, f, ensure_ascii=False, indent=2)
 
-#json output
+print(f"Wrote ReActRAG_v3_Lllama3.1-8B.json with {len(results)} rows.")
 
-# with open("submission.json", "w", encoding="utf-8") as f:
-#     json.dump(results, f, ensure_ascii=False, indent=2)
-
-# print(f"Wrote submission.json with {len(results)} rows (id, response).")
-
-
-
-
-
-
-
-
-#token counting
-# encoding = tiktoken.get_encoding("gpt2")
-# tokens = encoding.encode(prompt)
