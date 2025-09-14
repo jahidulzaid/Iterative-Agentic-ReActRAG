@@ -41,7 +41,7 @@ import psutil
 
 
 
-model_id = "meta-llama/Llama-3.1-8B"
+model_id = "Qwen/Qwen3-8B"
 
 llm = LLM(
     model=model_id,
@@ -553,7 +553,7 @@ for i, sample in tqdm(enumerate(data), total=len(data)):
 
             # Measure latency
         latency = time.time() - start_time
-        end_mem = process.memory_info().rss / (1024 * 1024)  # in MB
+        end_mem = process.memory_info().rss
         resource_used = end_mem - start_mem
         
         # Compute Exact Match
@@ -652,15 +652,16 @@ for i, sample in tqdm(enumerate(data), total=len(data)):
 
 #csv output
 import pandas as pd
-df = pd.DataFrame(results)
-df.to_csv("ReActRAG_v3_Lllama3.1-8B.csv", index=False, encoding="utf-8")
 
-print(f"Wrote ReActRAG_v3_Lllama3.1-8B.csv with {len(results)} rows.")
+df = pd.DataFrame(results)
+df.to_csv("ReActRAG_v1_Qwen3-8B_triviaQA.csv", index=False, encoding="utf-8")
+
+print(f"Wrote ReActRAG_v1_Qwen3-8B_triviaQA.csv with {len(results)} rows.")
 
 # json output
 
-with open("ReActRAG_v3_Lllama3.1-8B.json", "w", encoding="utf-8") as f:
+with open("ReActRAG_v1_Qwen3-8B_triviaQA.json", "w", encoding="utf-8") as f:
     json.dump(results, f, ensure_ascii=False, indent=2)
 
-print(f"Wrote ReActRAG_v3_Lllama3.1-8B.json with {len(results)} rows.")
+print(f"Wrote ReActRAG_v1_Qwen3-8B_triviaQA.json with {len(results)} rows.")
 

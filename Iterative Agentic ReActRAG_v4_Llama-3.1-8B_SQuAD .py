@@ -498,7 +498,7 @@ def extract_field(response_text, field_name):
 
 
 # Load JSONL properly (not using pandas.read_csv for JSONL)
-jsonl_path = "dataset/triviaQA.jsonl"
+jsonl_path = "dataset/squad_v2_subset_1000.jsonl"
 with open(jsonl_path, "r", encoding="utf-8") as f:
     data = [json.loads(line) for line in f if line.strip()]
 
@@ -553,7 +553,7 @@ for i, sample in tqdm(enumerate(data), total=len(data)):
 
             # Measure latency
         latency = time.time() - start_time
-        end_mem = process.memory_info().rss / (1024 * 1024)  # in MB
+        end_mem = process.memory_info().rss
         resource_used = end_mem - start_mem
         
         # Compute Exact Match
@@ -653,14 +653,14 @@ for i, sample in tqdm(enumerate(data), total=len(data)):
 #csv output
 import pandas as pd
 df = pd.DataFrame(results)
-df.to_csv("ReActRAG_v3_Lllama3.1-8B.csv", index=False, encoding="utf-8")
+df.to_csv("ReActRAG_v4_Lllama3.1-8B_squad.csv", index=False, encoding="utf-8")
 
-print(f"Wrote ReActRAG_v3_Lllama3.1-8B.csv with {len(results)} rows.")
+print(f"Wrote ReActRAG_v4_Lllama3.1-8B_squad.csv with {len(results)} rows.")
 
 # json output
 
-with open("ReActRAG_v3_Lllama3.1-8B.json", "w", encoding="utf-8") as f:
+with open("ReActRAG_v4_Lllama3.1-8B_squad.json", "w", encoding="utf-8") as f:
     json.dump(results, f, ensure_ascii=False, indent=2)
 
-print(f"Wrote ReActRAG_v3_Lllama3.1-8B.json with {len(results)} rows.")
+print(f"Wrote ReActRAG_v4_Lllama3.1-8B_squad.json with {len(results)} rows.")
 

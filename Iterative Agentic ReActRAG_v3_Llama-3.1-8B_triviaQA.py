@@ -41,7 +41,7 @@ import psutil
 
 
 
-model_id = "Qwen/Qwen3-8B"
+model_id = "meta-llama/Llama-3.1-8B"
 
 llm = LLM(
     model=model_id,
@@ -513,7 +513,7 @@ for i, sample in tqdm(enumerate(data), total=len(data)):
         # Measure latency
         start_time = time.time()
         process = psutil.Process(os.getpid())
-        start_mem = process.memory_info().rss / (1024 * 1024)  # in MB
+        start_mem = process.memory_info().rss
         
 
         # Extract gold answer from sample for exact match computation
@@ -652,16 +652,15 @@ for i, sample in tqdm(enumerate(data), total=len(data)):
 
 #csv output
 import pandas as pd
-
 df = pd.DataFrame(results)
-df.to_csv("ReActRAG_v1_Qwen3-8B.csv", index=False, encoding="utf-8")
+df.to_csv("ReActRAG_v3_Lllama3.1-8B.csv", index=False, encoding="utf-8")
 
-print(f"Wrote ReActRAG_v1_Qwen3-8B.csv with {len(results)} rows.")
+print(f"Wrote ReActRAG_v3_Lllama3.1-8B.csv with {len(results)} rows.")
 
 # json output
 
-with open("ReActRAG_v1_Qwen3-8B.json", "w", encoding="utf-8") as f:
+with open("ReActRAG_v3_Lllama3.1-8B.json", "w", encoding="utf-8") as f:
     json.dump(results, f, ensure_ascii=False, indent=2)
 
-print(f"Wrote ReActRAG_v1_Qwen3-8B.json with {len(results)} rows.")
+print(f"Wrote ReActRAG_v3_Lllama3.1-8B.json with {len(results)} rows.")
 
