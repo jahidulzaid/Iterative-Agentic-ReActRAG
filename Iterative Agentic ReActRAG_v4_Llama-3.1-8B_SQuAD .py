@@ -41,7 +41,7 @@ import psutil
 
 
 
-model_id = "meta-llama/Llama-3.1-8B"
+model_id = "meta-llama/Llama-3.1-8B-Instruct"
 
 llm = LLM(
     model=model_id,
