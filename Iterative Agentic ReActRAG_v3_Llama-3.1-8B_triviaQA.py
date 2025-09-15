@@ -95,26 +95,71 @@ ch.setFormatter(CustomFormatter())
 logger.addHandler(ch)
 
 
+# def llm_engine(messages, stop_sequences=None, start_sequence=None) -> str:
+#     sampling_params = vllm.SamplingParams(
+#         temperature=0.7,
+#         top_p=0.9,
+#         # use_beam_search=True,
+#         # num_beams=3,
+#         best_of=1,
+#         max_tokens=32768,
+#         stop=stop_sequences,
+#         include_stop_str_in_output=True,
+#     )
+#     prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+#     if start_sequence:
+#         prompt += start_sequence
+#     output = llm.generate([prompt], sampling_params, use_tqdm=False)
+#     response = output[0].outputs[0].text
+
+#     if start_sequence:
+#         response = start_sequence + response
+#     return response
+
+def format_chat_prompt(messages, start_sequence=None):
+    """
+    Manually format system + user + assistant messages into a single prompt string.
+    """
+    prompt = ""
+    for msg in messages:
+        role = msg.get("role")
+        content = msg.get("content", "")
+        if role == "system":
+            prompt += f"<system>{content}</system>\n"
+        elif role == "user":
+            prompt += f"<user>{content}</user>\n"
+        elif role == "assistant":
+            prompt += f"<assistant>{content}</assistant>\n"
+    if start_sequence:
+        prompt += start_sequence
+    return prompt
+
+
 def llm_engine(messages, stop_sequences=None, start_sequence=None) -> str:
+    # Manually format chat prompt
+    prompt = format_chat_prompt(messages, start_sequence=start_sequence)
+
+    # vLLM sampling parameters
     sampling_params = vllm.SamplingParams(
         temperature=0.7,
         top_p=0.9,
-        # use_beam_search=True,
-        # num_beams=3,
         best_of=1,
         max_tokens=32768,
         stop=stop_sequences,
         include_stop_str_in_output=True,
     )
-    prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-    if start_sequence:
-        prompt += start_sequence
+
+    # Generate output
     output = llm.generate([prompt], sampling_params, use_tqdm=False)
     response = output[0].outputs[0].text
 
+    # Prepend start_sequence if needed
     if start_sequence:
         response = start_sequence + response
+
     return response
+
+
 
 
 def extract_answer(response):
