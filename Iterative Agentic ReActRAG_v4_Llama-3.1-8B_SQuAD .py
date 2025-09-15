@@ -41,7 +41,7 @@ import psutil
 
 
 
-model_id = "meta-llama/Llama-3.1-8B-Instruct"
+model_id = "meta-llama/Llama-3.1-8B"
 
 llm = LLM(
     model=model_id,
@@ -95,25 +95,70 @@ ch.setFormatter(CustomFormatter())
 logger.addHandler(ch)
 
 
+# def llm_engine(messages, stop_sequences=None, start_sequence=None) -> str:
+#     sampling_params = vllm.SamplingParams(
+#         temperature=0.7,
+#         top_p=0.9,
+#         # use_beam_search=True,
+#         # num_beams=3,
+#         best_of=1,
+#         max_tokens=32768,
+#         stop=stop_sequences,
+#         include_stop_str_in_output=True,
+#     )
+#     prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+#     if start_sequence:
+#         prompt += start_sequence
+#     output = llm.generate([prompt], sampling_params, use_tqdm=False)
+#     response = output[0].outputs[0].text
+
+#     if start_sequence:
+#         response = start_sequence + response
+#     return response
+
+
+
+# for llama3.1-8B, ensure tokenizer has a chat_template
+from transformers import ChatTemplate
 def llm_engine(messages, stop_sequences=None, start_sequence=None) -> str:
+    # Ensure tokenizer has a chat_template
+    if not hasattr(tokenizer, "chat_template") or tokenizer.chat_template is None:
+        
+        tokenizer.chat_template = ChatTemplate(
+            system="<system>{system}</system>\n",
+            user="<user>{user}</user>\n",
+            assistant="<assistant>{assistant}</assistant>\n"
+        )
+
+    # Convert messages into a single prompt string
+    prompt = tokenizer.apply_chat_template(
+        messages, 
+        tokenize=False, 
+        add_generation_prompt=True
+    )
+
+    # Append start_sequence if provided
+    if start_sequence:
+        prompt += start_sequence
+
+    # Set sampling parameters for vLLM
     sampling_params = vllm.SamplingParams(
         temperature=0.7,
         top_p=0.9,
-        # use_beam_search=True,
-        # num_beams=3,
         best_of=1,
         max_tokens=32768,
         stop=stop_sequences,
         include_stop_str_in_output=True,
     )
-    prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-    if start_sequence:
-        prompt += start_sequence
+
+    # Generate output
     output = llm.generate([prompt], sampling_params, use_tqdm=False)
     response = output[0].outputs[0].text
 
+    # Prepend start_sequence to response if needed
     if start_sequence:
         response = start_sequence + response
+
     return response
 
 
