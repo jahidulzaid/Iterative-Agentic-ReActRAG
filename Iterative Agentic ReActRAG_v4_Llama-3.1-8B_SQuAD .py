@@ -119,29 +119,31 @@ logger.addHandler(ch)
 
 
 # for llama3.1-8B, ensure tokenizer has a chat_template
-from transformers import ChatTemplate
-def llm_engine(messages, stop_sequences=None, start_sequence=None) -> str:
-    # Ensure tokenizer has a chat_template
-    if not hasattr(tokenizer, "chat_template") or tokenizer.chat_template is None:
-        
-        tokenizer.chat_template = ChatTemplate(
-            system="<system>{system}</system>\n",
-            user="<user>{user}</user>\n",
-            assistant="<assistant>{assistant}</assistant>\n"
-        )
 
-    # Convert messages into a single prompt string
-    prompt = tokenizer.apply_chat_template(
-        messages, 
-        tokenize=False, 
-        add_generation_prompt=True
-    )
-
-    # Append start_sequence if provided
+def format_chat_prompt(messages, start_sequence=None):
+    """
+    Manually format system + user + assistant messages into a single prompt string.
+    """
+    prompt = ""
+    for msg in messages:
+        role = msg.get("role")
+        content = msg.get("content", "")
+        if role == "system":
+            prompt += f"<system>{content}</system>\n"
+        elif role == "user":
+            prompt += f"<user>{content}</user>\n"
+        elif role == "assistant":
+            prompt += f"<assistant>{content}</assistant>\n"
     if start_sequence:
         prompt += start_sequence
+    return prompt
 
-    # Set sampling parameters for vLLM
+
+def llm_engine(messages, stop_sequences=None, start_sequence=None) -> str:
+    # Manually format chat prompt
+    prompt = format_chat_prompt(messages, start_sequence=start_sequence)
+
+    # vLLM sampling parameters
     sampling_params = vllm.SamplingParams(
         temperature=0.7,
         top_p=0.9,
@@ -155,11 +157,13 @@ def llm_engine(messages, stop_sequences=None, start_sequence=None) -> str:
     output = llm.generate([prompt], sampling_params, use_tqdm=False)
     response = output[0].outputs[0].text
 
-    # Prepend start_sequence to response if needed
+    # Prepend start_sequence if needed
     if start_sequence:
         response = start_sequence + response
 
     return response
+
+
 
 
 def extract_answer(response):
