@@ -4,7 +4,7 @@ from ragas.metrics import answer_relevancy, faithfulness, context_precision, con
 from ragas import evaluate
 
 # Load predictions
-df = pd.read_csv("triviaqa_predictions.csv")
+df = pd.read_csv("Result_SquaD/ReActRAG_v5_Qwen3-8B_SQuAD.csv")
 
 # Prepare Ragas input
 ragas_data = [
@@ -12,7 +12,7 @@ ragas_data = [
         "question": row["question"],
         "contexts": [row["context"]],
         "ground_truth": row["answer"],
-        "prediction": row["prediction"]
+        # "prediction": row["prediction"]
     }
     for _, row in df.iterrows()
 ]

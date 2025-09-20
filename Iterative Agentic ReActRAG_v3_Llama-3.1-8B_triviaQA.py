@@ -543,7 +543,7 @@ def extract_field(response_text, field_name):
 
 
 # Load JSONL properly (not using pandas.read_csv for JSONL)
-jsonl_path = "dataset/triviaQA.jsonl"
+jsonl_path = "dataset/triviaQA_200_LlaMa.jsonl"
 with open(jsonl_path, "r", encoding="utf-8") as f:
     data = [json.loads(line) for line in f if line.strip()]
 
